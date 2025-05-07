@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
         .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap();
+        .unwrap(); 
     builder.set_certificate_chain_file("cert.pem").unwrap();
     HttpServer::new(move || {
         let cors = Cors::default()
