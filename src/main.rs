@@ -5,7 +5,6 @@ use controllers::link_controller::create_link;
 use controllers::link_controller::delete_link;
 use controllers::link_controller::get_link;
 use dotenv::dotenv;
-use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use std::env;
 use tokio_postgres::NoTls;
 
@@ -47,11 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let client_data = web::Data::new(client);
-    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    builder
-        .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap(); 
-    builder.set_certificate_chain_file("cert.pem").unwrap();
+
     HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin("https://localhost:3000")
@@ -70,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .route("/{id}", web::get().to(get_link))
             .route("/delete/{id}", web::delete().to(delete_link))
     })
-    .bind_openssl(format!("{}:{}", server_config.0, server_config.1), builder)?
+    .bind(format!("{}:{}", server_config.0, server_config.1))?
     .run()
     .await?;
 
