@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     HttpServer::new(move || {
         let cors = Cors::default()
-            .allowed_origin("https://shrtl-peach.vercel.app/")
+            .allowed_origin("https://shrtl-peach.vercel.app")
             .allowed_methods(vec!["GET", "POST", "DELETE"])
             .allowed_headers(vec![
                 http::header::AUTHORIZATION,
