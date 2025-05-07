@@ -8,7 +8,6 @@ use uuid::Uuid;
     pub struct LinkData {
         url: String,
     }
-    // TO DO: add middleware put an api key
     pub async fn create_link(
         link_data: web::Json<LinkData>,
         db_client: web::Data<Client> 

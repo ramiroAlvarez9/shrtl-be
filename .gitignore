@@ -27,3 +27,4 @@ Thumbs.db
 # Ignore backup files
 *.bak
 *.tmp
+cert.pem

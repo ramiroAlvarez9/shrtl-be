@@ -1,23 +1,20 @@
 mod controllers;
-use actix_web::{http,web, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::{http, web, App, HttpServer};
 use controllers::link_controller::create_link;
-use controllers::link_controller::get_link;
 use controllers::link_controller::delete_link;
+use controllers::link_controller::get_link;
 use dotenv::dotenv;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use std::env;
 use tokio_postgres::NoTls;
-use actix_cors::Cors;
-
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let server_config = (
-        env::var("SERVER_HOST")?,
-        env::var("SERVER_PORT")?,
-    );
-    
+    let server_config = (env::var("SERVER_HOST")?, env::var("SERVER_PORT")?);
+
     let db_config = (
         env::var("DB_HOST")?,
         env::var("DB_PORT")?,
@@ -39,22 +36,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    client.execute(
-        "CREATE TABLE IF NOT EXISTS links (
+    client
+        .execute(
+            "CREATE TABLE IF NOT EXISTS links (
             id VARCHAR(6) PRIMARY KEY,
             original_url TEXT NOT NULL
         );",
-        &[]
-    ).await?;
+            &[],
+        )
+        .await?;
 
-    let client_data = web::Data::new(client); 
-
+    let client_data = web::Data::new(client);
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder
+        .set_private_key_file("key.pem", SslFiletype::PEM)
+        .unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
     HttpServer::new(move || {
-          let cors = Cors::default()
-            .allowed_origin("http://localhost:3000")
+        let cors = Cors::default()
+            .allowed_origin("https://localhost:3000")
             .allowed_methods(vec!["GET", "POST", "DELETE"])
-            .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-            .allowed_header(http::header::CONTENT_TYPE)
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+            ])
+            .allowed_header("x-api-key")
             .max_age(3600);
         App::new()
             .wrap(cors)
@@ -62,8 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .route("/create", web::post().to(create_link))
             .route("/{id}", web::get().to(get_link))
             .route("/delete/{id}", web::delete().to(delete_link))
-     })
-    .bind(format!("{}:{}", server_config.0, server_config.1))?
+    })
+    .bind_openssl(format!("{}:{}", server_config.0, server_config.1), builder)?
     .run()
     .await?;
 
