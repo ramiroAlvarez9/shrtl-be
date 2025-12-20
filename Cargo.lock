@@ -1592,12 +1592,12 @@ dependencies = [
  "futures-util",
  "openssl",
  "postgres-openssl",
- "regex",
  "secrecy",
  "serde",
  "serde_json",
  "tokio",
  "tokio-postgres",
+ "url",
  "uuid",
 ]
 
