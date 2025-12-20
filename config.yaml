@@ -1,10 +1,10 @@
 server:
-  host: "127.0.0.1"
-  port: 8080
+  host:
+  port:
 
 database:
-  host: "localhost"
-  port: 5432
-  username: "postgres"
-  password: "tu_contraseña"
-  database_name: "shortlinks"
+  host:
+  port:
+  username:
+  password:
+  database_name:

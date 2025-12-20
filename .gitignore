@@ -28,3 +28,6 @@ Thumbs.db
 *.bak
 *.tmp
 cert.pem
+key.pem
+GEMINI.md
+AGENTS.md

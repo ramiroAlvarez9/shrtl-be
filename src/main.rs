@@ -12,19 +12,13 @@ use tokio_postgres::NoTls;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let server_config = (env::var("SERVER_HOST")?, env::var("SERVER_PORT")?);
-
-    let db_config = (
+    let _db_connection_string = format!(
+        "host={} port={} user={} password={} dbname={}",
         env::var("DB_HOST")?,
         env::var("DB_PORT")?,
         env::var("DB_USER")?,
         env::var("DB_PASSWORD")?,
-        env::var("DB_NAME")?,
-    );
-
-    let _db_connection_string = format!(
-        "host={} port={} user={} password={} dbname={}",
-        db_config.0, db_config.1, db_config.2, db_config.3, db_config.4
+        env::var("DB_NAME")?
     );
 
     let (client, connection) = tokio_postgres::connect(&_db_connection_string, NoTls).await?;
@@ -34,16 +28,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("connection error: {}", e);
         }
     });
-
-    client
-        .execute(
-            "CREATE TABLE IF NOT EXISTS links (
-            id VARCHAR(6) PRIMARY KEY,
-            original_url TEXT NOT NULL
-        );",
-            &[],
-        )
-        .await?;
 
     let client_data = web::Data::new(client);
 
@@ -65,7 +49,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .route("/{id}", web::get().to(get_link))
             .route("/delete/{id}", web::delete().to(delete_link))
     })
-    .bind(format!("{}:{}", server_config.0, server_config.1))?
+    .bind(format!(
+        "{}:{}",
+        env::var("SERVER_HOST")?,
+        env::var("SERVER_PORT")?
+    ))?
     .run()
     .await?;
 
