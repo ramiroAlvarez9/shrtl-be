@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use regex::Regex;
 use serde::Deserialize;
 use tokio_postgres::Client;
@@ -9,9 +9,15 @@ pub struct LinkData {
     url: String,
 }
 pub async fn create_link(
+    req: HttpRequest,
     link_data: web::Json<LinkData>,
     db_client: web::Data<Client>,
+    api_key: web::Data<String>,
 ) -> impl Responder {
+    if !has_valid_api_key(&req, api_key.get_ref()) {
+        return HttpResponse::Unauthorized().json("Missing or invalid API key");
+    }
+
     let original_link = link_data.url.clone();
     let id = generate_short_id();
     if is_valid_url(&original_link) {
@@ -55,7 +61,16 @@ pub async fn get_link(path: web::Path<String>, db_client: web::Data<Client>) -> 
     }
 }
 
-pub async fn delete_link(path: web::Path<String>, db_client: web::Data<Client>) -> impl Responder {
+pub async fn delete_link(
+    req: HttpRequest,
+    path: web::Path<String>,
+    db_client: web::Data<Client>,
+    api_key: web::Data<String>,
+) -> impl Responder {
+    if !has_valid_api_key(&req, api_key.get_ref()) {
+        return HttpResponse::Unauthorized().json("Missing or invalid API key");
+    }
+
     let id = path.into_inner();
     match db_client
         .execute("DELETE FROM links WHERE id = $1;", &[&id])
@@ -73,6 +88,14 @@ pub async fn delete_link(path: web::Path<String>, db_client: web::Data<Client>) 
             HttpResponse::InternalServerError().json("Failed to delete URL")
         }
     }
+}
+
+fn has_valid_api_key(req: &HttpRequest, expected_key: &str) -> bool {
+    req.headers()
+        .get("x-api-key")
+        .and_then(|header| header.to_str().ok())
+        .map(|provided| provided == expected_key)
+        .unwrap_or(false)
 }
 
 fn is_valid_url(url: &str) -> bool {

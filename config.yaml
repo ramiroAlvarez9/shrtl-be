@@ -8,3 +8,6 @@ database:
   username:
   password:
   database_name:
+
+security:
+  api_key:

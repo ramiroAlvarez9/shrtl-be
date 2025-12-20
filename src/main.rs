@@ -21,6 +21,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("DB_NAME")?
     );
 
+    let api_key = env::var("API_KEY").expect("API_KEY is not set in the environment");
+
     let (client, connection) = tokio_postgres::connect(&_db_connection_string, NoTls).await?;
 
     tokio::spawn(async move {
@@ -30,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let client_data = web::Data::new(client);
+    let api_key_data = web::Data::new(api_key);
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -45,9 +48,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         App::new()
             .wrap(cors)
             .app_data(client_data.clone())
+            .app_data(api_key_data.clone())
             .route("/create", web::post().to(create_link))
-            .route("/{id}", web::get().to(get_link))
             .route("/delete/{id}", web::delete().to(delete_link))
+            .route("/{id}", web::get().to(get_link))
     })
     .bind(format!(
         "{}:{}",
