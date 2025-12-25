@@ -1,12 +1,12 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use tokio_postgres::Client;
+use deadpool_postgres::Pool;
 
 use crate::utils::links::has_valid_api_key;
 
 pub async fn delete_link(
     req: HttpRequest,
     path: web::Path<String>,
-    db_client: web::Data<Client>,
+    pool: web::Data<Pool>,
     api_key: web::Data<String>,
 ) -> impl Responder {
     if !has_valid_api_key(&req, api_key.get_ref()) {
@@ -14,7 +14,14 @@ pub async fn delete_link(
     }
 
     let id = path.into_inner();
-    match db_client
+    let client = match pool.get().await {
+        Ok(client) => client,
+        Err(e) => {
+            eprintln!("Error getting client from pool: {}", e);
+            return HttpResponse::InternalServerError().json("Failed to connect to database");
+        }
+    };
+    match client
         .execute("DELETE FROM links WHERE id = $1;", &[&id])
         .await
     {

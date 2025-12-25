@@ -5,6 +5,7 @@ use actix_web::{http, web, App, HttpServer};
 use controllers::create_link;
 use controllers::delete_link;
 use controllers::get_link;
+use deadpool_postgres::{Config, Runtime};
 use dotenv::dotenv;
 use std::env;
 use tokio_postgres::NoTls;
@@ -13,26 +14,18 @@ use tokio_postgres::NoTls;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let _db_connection_string = format!(
-        "host={} port={} user={} password={} dbname={}",
-        env::var("DB_HOST")?,
-        env::var("DB_PORT")?,
-        env::var("DB_USER")?,
-        env::var("DB_PASSWORD")?,
-        env::var("DB_NAME")?
-    );
+    let mut cfg = Config::new();
+    cfg.host = env::var("DB_HOST").ok();
+    cfg.user = env::var("DB_USER").ok();
+    cfg.password = env::var("DB_PASSWORD").ok();
+    cfg.dbname = env::var("DB_NAME").ok();
+    cfg.port = env::var("DB_PORT").ok().and_then(|p| p.parse().ok());
+
+    let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)?;
 
     let api_key = env::var("API_KEY").expect("API_KEY is not set in the environment");
 
-    let (client, connection) = tokio_postgres::connect(&_db_connection_string, NoTls).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    let client_data = web::Data::new(client);
+    let pool_data = web::Data::new(pool);
     let api_key_data = web::Data::new(api_key);
 
     let server_host = env::var("SERVER_HOST")?;
@@ -53,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .max_age(3600);
         App::new()
             .wrap(cors)
-            .app_data(client_data.clone())
+            .app_data(pool_data.clone())
             .app_data(api_key_data.clone())
             .route("/create", web::post().to(create_link))
             .route("/delete/{id}", web::delete().to(delete_link))
